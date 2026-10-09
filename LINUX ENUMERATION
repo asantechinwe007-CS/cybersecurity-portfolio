@@ -1,0 +1,158 @@
+CTF Field Guide — Part 3: Linux Enumeration
+Replace TARGET only when a command is run from Kali against a TryHackMe machine. Commands run after you obtain a shell are marked on target.
+1. Confirm your access
+Run on the target:
+whoami
+id
+hostname
+pwd
+These tell you your username, groups, machine name, and current folder.
+cat /etc/os-release
+uname -a
+These show the operating system and kernel version.
+ip a
+ip route
+These show network interfaces and routes.
+2. Find users and groups
+cat /etc/passwd
+List local user accounts.
+getent passwd
+Ask the system for all known accounts.
+ls -la /home
+See which users have home directories.
+groups
+Show the groups for your current user.
+Look for interesting groups such as:
+sudo
+docker
+lxd
+adm
+disk
+Group membership may affect what the user can access.
+3. Check administrative permissions
+sudo -l
+This is one of the most important commands. It shows what you can run with sudo.
+Look for commands that:
+- Run as root
+- Do not require a password
+- Allow you to execute another program
+- Allow files or commands to be supplied as input
+Do not randomly run listed commands. First understand what they do in the authorised lab.
+4. Inspect files and permissions
+ls -la
+Show hidden files and permissions in the current folder.
+find / -type f -perm -4000 2>/dev/null
+Find SUID files.
+find / -type f -writable 2>/dev/null
+Find writable files.
+find / -type d -writable 2>/dev/null
+Find writable directories.
+getcap -r / 2>/dev/null
+Find files with Linux capabilities.
+Pay attention to unusual SUID files, writable scripts run by privileged users, and capabilities that give powerful privileges.
+5. Inspect scheduled tasks
+cat /etc/crontab
+View system cron jobs.
+ls -la /etc/cron.*
+Inspect scheduled-task folders.
+crontab -l
+View the current user’s scheduled jobs.
+Look for scripts executed by root where you can modify the script or its parent directory.
+6. Inspect processes and services
+ps aux
+List running processes.
+ps aux --forest
+Show processes in a tree.
+ss -tulpn
+Show listening network services.
+systemctl list-units --type=service --state=running
+List active services.
+Ask:
+What is running?
+Who owns the process?
+Is a configuration file exposed?
+Does the service use a weak or hard-coded credential?
+7. Search for credentials and secrets
+grep -RniE "password|passwd|secret|token|key" /var/www /opt /home 2>/dev/null
+Search common application folders for likely secret names.
+find / -name "*.conf" -o -name "*.config" -o -name ".env" 2>/dev/null
+Find configuration files.
+cat ~/.bash_history
+Inspect the current user’s command history.
+find /home -name ".*history" -type f 2>/dev/null
+Find history files belonging to users.
+Never upload discovered credentials to GitHub. Record only a redacted note in your private lab notes.
+8. Inspect web applications
+If the target is running a web server:
+ls -la /var/www
+Look for website files.
+grep -RniE "password|secret|username|DB_" /var/www 2>/dev/null
+Search source files for database or application settings.
+find /var/www -type f 2>/dev/null
+List web files.
+From Kali, inspect headers:
+curl -I http://TARGET
+Read visible HTML:
+curl http://TARGET
+Look for comments, hidden paths, framework names, backup files, and exposed configuration.
+9. Check mounted filesystems and devices
+mount
+Show mounted filesystems.
+lsblk
+Show disks and partitions.
+cat /etc/fstab
+Show persistent mount configuration.
+df -h
+Show disk usage.
+You may discover mounted shares, backup locations, or writable storage.
+10. Check kernel and environment information
+env
+Show environment variables.
+echo $PATH
+Show executable search paths.
+ls -la /tmp /var/tmp /dev/shm
+Inspect temporary directories for unusual files.
+cat /proc/version
+Show kernel information.
+Do not immediately assume an old kernel is exploitable. Confirm the exact version and research it in the room’s context.
+11. Useful automation
+If the room allows helper scripts, you may use an enumeration script such as LinPEAS:
+./linpeas.sh
+Read the output yourself. Automation produces clues, not conclusions.
+Other useful tools include:
+pspy
+Monitors processes that appear and disappear, which can reveal scheduled scripts.
+lse
+A Linux privilege-escalation auditing script.
+12. Document your findings
+Use a table like this in your private notes:
+Finding:
+Evidence:
+Why it matters:
+What I checked next:
+Security impact:
+Recommended fix:
+Example:
+Finding: A root-owned script runs every minute.
+Evidence: /etc/crontab and script permissions.
+Why it matters: The current user can modify the script.
+Impact: Possible unauthorised privileged execution.
+Fix: Restrict write permissions and review cron ownership.
+Linux room workflow
+1. whoami and id
+2. OS and kernel information
+3. sudo -l
+4. users and groups
+5. running processes and services
+6. SUID files and capabilities
+7. cron jobs
+8. web and configuration files
+9. credentials and history
+10. document evidence before taking action
+The goal is not to run every command blindly. The goal is to ask:
+Who am I?
+What can I access?
+What is running?
+What is misconfigured?
+What evidence proves it?
+Next sections in the guide will be Windows enumeration, SMB/WinRM, and Active Directory basics.
