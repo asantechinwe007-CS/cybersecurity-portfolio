@@ -1,0 +1,15 @@
+https://github.com/asantechinwe007-CS/cocoatolagos
+CocoaPass is a web application designed for a School project for MBA students (not me) for traceability, visibility and logistic purpose. 
+this app let trace production of cocoa from the farm where it is being harvested, tracks its movemennt and temperatur and humidity during transportation. at the end of each cycle, the product batch getts a 
+history which contains allthe necessary info about a batch  which a buyer needs.
+it also automatically generates a EUDR certificate, which can be acessed via a qr code.
+I also created a web app for the drivers, to be able to track the logistic side and for the drivers to be able to add if ther eis any delay or any change in humidity and temperatue which is also very important
+in cocoa production.(humidity and certain temp cchanges affect the quality of a batch)
+
+A web application developed as a school project. This project demonstrates my ability to design, build, and document an application while considering secure handling of user data, authentication, and input validation.
+
+Role: Developer
+
+Skills demonstrated: Web development, Git/GitHub, application security fundamentals
+
+Repository: View CocoaPass project
