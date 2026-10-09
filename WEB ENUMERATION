@@ -1,0 +1,213 @@
+CTF Field Guide — Part 4: Web Enumeration
+Replace TARGET with the IP address of the TryHackMe machine.
+1. Confirm the web service
+nmap -p 80,443,8080,8000,8443 -sV TARGET
+If a web port is open, test it in your browser:
+http://TARGET
+For a non-standard port:
+http://TARGET:8080
+Check the response from Terminal:
+curl -I http://TARGET
+Important headers include:
+Server
+X-Powered-By
+Set-Cookie
+Location
+Content-Security-Policy
+2. Identify technologies
+whatweb http://TARGET
+WhatWeb may identify:
+- Apache or Nginx
+- PHP
+- WordPress
+- JavaScript frameworks
+- CMS software
+- Cookies and redirects
+You can also use Nmap:
+nmap -p 80,443 --script http-title,http-headers TARGET
+3. Inspect the page source
+curl -s http://TARGET
+Look for:
+- HTML comments
+- Hidden forms
+- JavaScript files
+- API paths
+- Framework names
+- Backup-file names
+- Developer notes
+Save the page:
+curl -s http://TARGET -o index.html
+Search it:
+grep -inE "admin|login|api|backup|token|password|debug|secret" index.html
+4. Check standard files
+curl -i http://TARGET/robots.txt
+curl -i http://TARGET/sitemap.xml
+curl -i http://TARGET/.well-known/security.txt
+These files sometimes reveal paths or security contacts.
+5. Directory discovery with Gobuster
+gobuster dir \
+-u http://TARGET \
+-w /usr/share/wordlists/dirb/common.txt \
+-o gobuster.txt
+Check common extensions:
+gobuster dir \
+-u http://TARGET \
+-w /usr/share/wordlists/dirb/common.txt \
+-x php,html,txt,bak,zip \
+-o gobuster-extensions.txt
+Useful status codes:
+200 = page found
+301/302 = redirect
+403 = exists but access is forbidden
+404 = not found
+500 = server error
+6. Directory discovery with FFUF
+ffuf \
+-u http://TARGET/FUZZ \
+-w /usr/share/wordlists/dirb/common.txt \
+-fc 404
+Search for files:
+ffuf \
+-u http://TARGET/FUZZ \
+-w /usr/share/wordlists/dirb/common.txt \
+-e .php,.html,.txt,.bak \
+-fc 404
+- FUZZ is replaced by each word.
+- -fc 404 hides normal not-found responses.
+- -e adds file extensions.
+7. Directory discovery with Feroxbuster
+feroxbuster -u http://TARGET
+With extensions:
+feroxbuster -u http://TARGET -x php,html,txt,bak
+Save results:
+feroxbuster -u http://TARGET -o ferox.txt
+Use one directory tool first. Running all of them immediately creates unnecessary noise.
+8. Check virtual hosts
+Sometimes several websites share one IP address.
+First inspect the hostname:
+curl -I http://TARGET
+If the room gives you a domain such as example.thm, add it locally:
+sudo nano /etc/hosts
+Add:
+TARGET example.thm
+Then open:
+http://example.thm
+For authorised lab virtual-host discovery:
+ffuf \
+-u http://TARGET \
+-H "Host: FUZZ.example.thm" \
+-w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
+-fs 0
+The Host header tells the server which virtual website you want.
+9. Inspect JavaScript files
+Find JavaScript references:
+grep -oE 'src="[^"]+\.js[^"]*"' index.html
+Download a discovered JavaScript file:
+curl -s http://TARGET/app.js -o app.js
+Search it:
+grep -inE "api|admin|user|token|key|endpoint|debug" app.js
+JavaScript may reveal:
+- API routes
+- Hidden page names
+- Parameter names
+- Development endpoints
+- Front-end authentication logic
+Do not treat a visible key as permission to access another system. It is only a lab clue.
+10. Find parameters
+If the site has a URL such as:
+http://TARGET/page.php?id=1
+record the parameter:
+id
+Inspect forms:
+grep -inE "<form|input|action=|method=" index.html
+Look for:
+GET parameters
+POST fields
+File-upload forms
+Search fields
+Cookie names
+For authorised parameter discovery with FFUF:
+ffuf \
+-u "http://TARGET/page.php?FUZZ=test" \
+-w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt \
+-fs 0
+This is discovery only. Do not automatically assume a parameter is vulnerable.
+11. Inspect cookies
+curl -I http://TARGET
+Look for:
+Set-Cookie
+HttpOnly
+Secure
+SameSite
+A cookie missing security attributes may be worth documenting, but it is not automatically exploitable.
+12. Test HTTP methods
+curl -i -X OPTIONS http://TARGET
+This may show supported methods such as:
+GET
+POST
+HEAD
+OPTIONS
+PUT
+DELETE
+A method being listed does not prove it can be abused. Verify only within the authorised room.
+13. Use Burp Suite
+Start Burp:
+burpsuite
+Basic workflow:
+1. Open Burp Suite.
+2. Use the temporary project option.
+3. Open Burp’s built-in browser.
+4. Browse the target.
+5. Inspect the HTTP history.
+6. Send interesting requests to Repeater.
+7. Change one value at a time.
+8. Compare status codes, response length, and response content.
+Burp is useful for understanding how the browser communicates with the web server.
+14. Check for common web-server information
+nikto -h http://TARGET
+Nikto may identify:
+- Dangerous default files
+- Missing headers
+- Exposed directories
+- Old server software
+- Backup files
+It can produce false positives, so verify findings manually.
+15. HTTPS and certificates
+curl -k -I https://TARGET
+View certificate information:
+openssl s_client -connect TARGET:443
+Look for:
+- Hostnames
+- Certificate names
+- Expiry dates
+- Alternative names
+A certificate hostname may reveal another domain used by the application.
+Web-enumeration note template
+Target:
+Web ports:
+Server:
+Technology:
+Main pages:
+Interesting directories:
+Robots.txt:
+Sitemap:
+JavaScript files:
+Parameters:
+Cookies:
+Virtual hosts:
+Potential issue:
+Evidence:
+Recommended next step:
+A sensible web workflow
+1. Identify the web port.
+2. Check the page in a browser.
+3. Run curl -I and WhatWeb.
+4. Inspect source and JavaScript.
+5. Check robots.txt and sitemap.xml.
+6. Run Gobuster, FFUF, or Feroxbuster.
+7. Investigate discovered pages manually.
+8. Check virtual hosts and parameters.
+9. Use Burp to understand requests.
+10. Record evidence before testing vulnerabilities.
+The central question is:
+What is this application, what pages does it expose, and how does it process input?
